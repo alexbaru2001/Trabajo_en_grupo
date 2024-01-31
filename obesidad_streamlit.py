@@ -37,6 +37,15 @@ def boton1(obesidad):
       
     with col2:   
       mostrar1(obesidad,'water')
+      plot=mostrar1(obesidad,'vegetables')
+      st.pyplot(ggplot.draw(plot))
+      plot=mostrar1(obesidad,'alcohol')
+      st.pyplot(ggplot.draw(plot))
+    with col2: 
+      plot=mostrar1(obesidad,'water')
+      st.pyplot(ggplot.draw(plot))
+      plot=mostrar1(obesidad,'physical_activity')
+      st.pyplot(ggplot.draw(plot))
 
 def main():
     st.set_page_config(page_title=App_title,
@@ -47,5 +56,6 @@ def main():
     obesidad = pd.read_csv("obesity_limpio.csv")
     boton1(obesidad)
     
+    st.write(obesidad)
 if __name__ == "__main__":
-    main()    
+    main()   
