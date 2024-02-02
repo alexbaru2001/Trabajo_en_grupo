@@ -19,28 +19,30 @@ App_title='Hábitos por niveles de obesidad'
 App_subtitle='Source: Bicimad'
 
 
-def mostrar1(obesidad,columna):
-    return (ggplot(obesidad[['obesity_type',columna]], aes(x='obesity_type', fill=f'factor({columna})')) + 
+def mostrar1(obesidad_limpio,columna,paleta):
+    return (ggplot(obesidad_limpio[['obesity_type',columna]], aes(x='obesity_type', fill=f'factor({columna})')) + 
         geom_bar(position='dodge') + 
-        scale_fill_manual(values=["#61D04F", "#2297E6", "#CD0BBC",'#F5C710'],name = "Nivel de consumo de alcohol")+
         theme(axis_text_x = element_text(angle = 45, hjust = 1,color = "black"),
               panel_grid_major_x=element_blank(),
-              panel_background=element_rect(fill='#d4d4d4'),
-              panel_grid_major_y=element_line(size=0.5))+
-        labs(x='Niveles de obesidad', y='Cantidad')
-        ) 
+              panel_background=element_rect(fill='grey'),
+              panel_grid_major_y=element_blank(),
+              panel_grid_minor_y=element_blank())+
+        labs(x='Niveles de obesidad', y='Cantidad')+
+        scale_fill_brewer(palette = paleta,name = f"Nivel de consumo de {columna}")+
+        ylim(0, 300)
+        )
 
 def boton1(obesidad):
     col1, col2 = st.columns([1, 1])
     with col1:
-      plot=mostrar1(obesidad,'vegetables')
+      plot=mostrar1(obesidad,'vegetables','Greens')
       st.pyplot(ggplot.draw(plot))
-      plot=mostrar1(obesidad,'alcohol')
+      plot=mostrar1(obesidad,'alcohol','YlOrRd')
       st.pyplot(ggplot.draw(plot))
     with col2: 
-      plot=mostrar1(obesidad,'water')
+      plot=mostrar1(obesidad,'water','Blues')
       st.pyplot(ggplot.draw(plot))
-      plot=mostrar1(obesidad,'physical_activity')
+      plot=mostrar1(obesidad,'physical_activity','Purples')
       st.pyplot(ggplot.draw(plot))
 
 def main():
