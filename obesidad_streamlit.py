@@ -45,6 +45,31 @@ def procesado_datos(obesidad):
     #Para TUE, ¿Cuanto tiempo consumes dispositivos electrónicos en un día? 
     orden_categorias = ["0-2h","3-5h","Más de 5h"]
     obesidad['electronica'] = pd.Categorical(obesidad['electronica'], categories=orden_categorias, ordered=True)
+    #Creamos un conjunto de condiciones que nos permiten determinar una dieta sana
+    dieta_sana_condiciones = (
+        (obesidad['water'].isin(['1L-2L','Más de 2L'])) &
+        (obesidad['physical_activity'].isin(['4d-5d', '2d-4d'])) &
+        (obesidad['comidas']=="Tres") &
+        (obesidad['FAVC'] == 'no') &
+        (obesidad['SMOKE'] == 'no') &
+        (obesidad['electronica']=='0-2h') &
+        (obesidad['alcohol'].isin(['no', 'Sometimes'])) &
+        (obesidad['CAEC'].isin(['no', 'Sometimes'])))
+    #Creamos la columna 'Salud'
+    obesidad['Salud']='NA'
+    obesidad.loc[dieta_sana_condiciones,'Salud']='Se cuida'
+    #Creamos un conjunto de condiciones que nos permiten determinar una dieta no sana
+    dieta_no_sana_condiciones=(~dieta_sana_condiciones) & ((obesidad['water'].isin(['Menos de 1L','Más de 2L'])) &
+        (obesidad['physical_activity'].isin(['No hago',])) &
+        (obesidad['comidas'].isin(['Entre 1 y 2', 'Más de tres'])) &
+        (obesidad['FAVC'] == 'yes')  &
+        (obesidad['electronica']=='Más de 5h') &
+        (obesidad['alcohol'].isin(['Frequently', 'Always'])) &
+        (obesidad['CAEC'].isin(['Frequently', 'Always']))|
+        (obesidad['SMOKE'] == 'yes'))
+    obesidad.loc[dieta_no_sana_condiciones,'Salud']='No se cuida'
+    #Cuando no se cumple ninguna de las anteriores se denota 'Se cuida poco'
+    obesidad.loc[(~dieta_no_sana_condiciones)&(~dieta_sana_condiciones),'Salud']='Se cuida poco'
     return obesidad
  
 #Insights#######################################    
@@ -88,31 +113,6 @@ def Insight1(obesidad_limpio,columna,paleta):
 
 #Insight 2
 def Insight2(obesidad, scatter=False):
-    #Creamos un conjunto de condiciones que nos permiten determinar una dieta sana
-    dieta_sana_condiciones = (
-        (obesidad['water'].isin(['1L-2L','Más de 2L'])) &
-        (obesidad['physical_activity'].isin(['4d-5d', '2d-4d'])) &
-        (obesidad['comidas']=="Tres") &
-        (obesidad['FAVC'] == 'no') &
-        (obesidad['SMOKE'] == 'no') &
-        (obesidad['electronica']=='0-2h') &
-        (obesidad['alcohol'].isin(['no', 'Sometimes'])) &
-        (obesidad['CAEC'].isin(['no', 'Sometimes'])))
-    #Creamos la columna 'Salud'
-    obesidad['Salud']='NA'
-    obesidad.loc[dieta_sana_condiciones,'Salud']='Se cuida'
-    #Creamos un conjunto de condiciones que nos permiten determinar una dieta no sana
-    dieta_no_sana_condiciones=(~dieta_sana_condiciones) & ((obesidad['water'].isin(['Menos de 1L','Más de 2L'])) &
-        (obesidad['physical_activity'].isin(['No hago',])) &
-        (obesidad['comidas'].isin(['Entre 1 y 2', 'Más de tres'])) &
-        (obesidad['FAVC'] == 'yes')  &
-        (obesidad['electronica']=='Más de 5h') &
-        (obesidad['alcohol'].isin(['Frequently', 'Always'])) &
-        (obesidad['CAEC'].isin(['Frequently', 'Always']))|
-        (obesidad['SMOKE'] == 'yes'))
-    obesidad.loc[dieta_no_sana_condiciones,'Salud']='No se cuida'
-    #Cuando no se cumple ninguna de las anteriores se denota 'Fofisano'
-    obesidad.loc[(~dieta_no_sana_condiciones)&(~dieta_sana_condiciones),'Salud']='Fofisano'
     obesidad_filtrado = obesidad[obesidad['Salud'].isin(['Se cuida', 'No se cuida'])]
     
     if scatter==False:
@@ -139,7 +139,7 @@ def Insight2(obesidad, scatter=False):
         fig = px.scatter(obesidad, x='weight', y='height', color='Salud',
                          title='Relación entre Peso y Altura',
                          labels={'weight': 'Peso (kg)', 'height': 'Altura (m)'})
-        
+        fig.update_layout(title_font=dict(size=30,color='black'))
         # Añade la línea de regresión al gráfico
         fig.add_traces(px.line(x=obesidad['weight'], y=m*obesidad['weight']+c).data)
     
@@ -232,7 +232,7 @@ def Insight5(obesidad):
 #Insight 6
 
 #Este insight nos puede devolver tres gráficas dependiendo de lo que deseemos obtenemos una u otra
-def Insight6(obesidad, opcion,historial_familiar=False):
+def Insight6(obesidad, opcion,historia_familiar='no'):
     if opcion=='porcentaje':
         fig= (ggplot(obesidad, aes(x='Salud', fill='family_history_with_overweight')) + 
                 geom_bar(position='fill')+
@@ -268,7 +268,7 @@ def Insight6(obesidad, opcion,historial_familiar=False):
                 font=dict(color='black')
             )
             return fig
-        if historial_familiar:
+        if historia_familiar=='no':
            fig=historial_familiar(obesidad,'no',"#F2A84A")
         else:
            fig=historial_familiar(obesidad,'yes','#D9560C')
@@ -287,29 +287,28 @@ def Insight8(obesidad):
     fig= (ggplot(obesidad, aes(x='MTRANS', fill='obesity_type')) + 
           geom_bar(position='fill')+
           scale_fill_brewer(type ='diverging',
-                            palette='PuOr',direction = -1,
-                            name="Tipos de obesidad")+
+                            palette='PuOr',
+                            direction = -1,
+                            name="Tipos de obesidad",
+                            labels = ("Peso Insuficiente","Peso Normal","Sobrepeso nivel I","Sobrepeso nivel II","Obesidad Tipo I","Obesidad Tipo II","Obesidad Tipo III"))+
           labs(title="Medios de transporte por tipos de obesidad",
                y='',
                x='Medios de transporte')+
           theme(panel_background = element_blank(),
                 axis_ticks=element_blank(),
                 axis_text_x=element_text(rotation=55,hjust=1),
-                axis_text_y=element_blank(),
-                axis_ticks_major_y = element_blank())
-          )
+                axis_ticks_major_y = element_blank(),
+                plot_title = element_text(hjust = 0.5, size = 12,weight='bold'),
+                legend_text=element_text(size=8),
+                legend_title=element_text(size=10,weight='bold'))
+         )
     return fig
         
 
 
-App_title='Hábitos por niveles de obesidad'
-App_subtitle='Source: Bicimad'
-
-
-
 #Botones
 
-def boton_insigh1(obesidad):
+def boton_insight1(obesidad):
     col1, col2 = st.columns([1, 1])
     with col1:
       plot=Insight1(obesidad,'water','Blues')
@@ -324,7 +323,7 @@ def boton_insigh1(obesidad):
       st.pyplot(ggplot.draw(plot))
       
       
-def boton_insigh2(obesidad):
+def boton_insight2(obesidad):
     col1, col2 = st.columns([1, 3])
     with col1:
         st.header("Opciones")
@@ -338,7 +337,7 @@ def boton_insigh2(obesidad):
         else:
             st.plotly_chart(Insight2(obesidad,'No'))
 
-def boton_insigh3(obesidad):
+def boton_insight3(obesidad):
     st.header("Relación entre uso de electrónica y actividad física")
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -347,32 +346,42 @@ def boton_insigh3(obesidad):
         plot=Insight3(obesidad,True)
         st.pyplot(ggplot.draw(plot))
 
-def boton_insigh4(obesidad):
+def boton_insight4(obesidad):
     col1, col2,col3 = st.columns([1, 2, 1])
     with col2:
         plot=Insight4(obesidad)
         st.pyplot(ggplot.draw(plot))
         
-def boton_insigh5(obesidad):
+def boton_insight5(obesidad):
     col1, col2,col3 = st.columns([1, 2, 1])
     with col2:
         plot=Insight5(obesidad)
         st.pyplot(ggplot.draw(plot))
 
-def boton_insigh6(obesidad):
-    col1, col2= st.columns([1, 1])
-    st.header("Opciones")
-    opciones= st.selectbox('',
-         ('Personas con antecedentes familiares','Personas por tipo de obesidad con o sin historial familiar'))
-    if opciones=='Personas con antecedentes familiares':
+def boton_insight6(obesidad):
+    col1, col2 = st.columns([1, 1])
+    with col1:
         plot=Insight6(obesidad,'porcentaje')
         st.pyplot(ggplot.draw(plot))
-    else:
-        with col1:
-            st.plotly_chart(Insight6(obesidad,'','yes'))
-        with col2:
+    with col2:
+        st.header("Opciones")
+        opciones= st.selectbox('',
+             ('Con historial familiar','Sin historial familiar'))
+        if opciones=='Sin historial familiar':
             st.plotly_chart(Insight6(obesidad,'','no'))
+        else:
+            st.plotly_chart(Insight6(obesidad,'','yes'))
 
+def boton_insight7(obesidad):
+    st.header("¿Qué patrones son los más comunes en las persona con obesidad de tipo III?")
+    obsidad_insight7=obesidad.loc[obesidad['obesity_type']=='Obesity_Type_III'][['family_history_with_overweight','FAVC','vegetables','comidas','CAEC','SMOKE','alcohol','water','SCC','physical_activity']].value_counts().reset_index()
+    st.dataframe(obsidad_insight7)
+
+def boton_insight8(obesidad):
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        plot=Insight8(obesidad)
+        st.pyplot(ggplot.draw(plot))
 
 def download_csv(obesidad):
     #Informacion obtenida de https://docs.streamlit.io/knowledge-base/using-streamlit/how-download-pandas-dataframe-csv
@@ -384,14 +393,17 @@ def download_csv(obesidad):
     csv = convert_df(obesidad)
     
     st.download_button(
-       "Press to Download",
+       "Haz click para descargar",
        csv,
        "obesidad.csv",
        "text/csv",
        key='download-csv'
     )
     
-    
+
+
+App_title='Hábitos por niveles de obesidad'
+   
     
 def main():
     st.set_page_config(page_title=App_title,
@@ -404,7 +416,7 @@ def main():
     opciones=st.sidebar.radio('', ['Introducción','Insights'])
     if opciones=='Introducción': 
         st.dataframe(obesidad)
-        st.write('inserta significado')
+        download_csv(obesidad)
     else:
         opciones_selectbox=st.sidebar.selectbox("Elige qué insight ver",
                                                ['Primer Insight','Segundo Insight','Tercer Insight',
@@ -412,22 +424,21 @@ def main():
                                                'Séptimo Insight','Octavo Insight'])
         
         if opciones_selectbox == 'Primer Insight':
-            boton_insigh1(obesidad)
+            boton_insight1(obesidad)
         elif opciones_selectbox == 'Segundo Insight':
-            boton_insigh2(obesidad)
+            boton_insight2(obesidad)
         elif opciones_selectbox == 'Tercer Insight':
-            boton_insigh3(obesidad)
+            boton_insight3(obesidad)
         elif opciones_selectbox == 'Cuarto Insight':
-            boton_insigh4(obesidad)
+            boton_insight4(obesidad)
         elif opciones_selectbox == 'Quinto Insight':
-            boton_insigh5(obesidad)
+            boton_insight5(obesidad)
         elif opciones_selectbox == 'Sexto Insight':
-            boton_insigh6(obesidad)
-        # elif opciones_selectbox == 'Séptimo Insight':
-        #     boton_insigh7(obesidad)
-        # elif opciones_selectbox == 'Octavo Insight':
-        #     boton_insigh8(obesidad)
+            boton_insight6(obesidad)
+        elif opciones_selectbox == 'Séptimo Insight':
+            boton_insight7(obesidad)
+        elif opciones_selectbox == 'Octavo Insight':
+            boton_insight8(obesidad)
 
-    #download_csv(obesidad)
 if __name__ == "__main__":
     main()   
