@@ -5,11 +5,8 @@ Created on Tue Jan 23 23:18:02 2024
 @author: alexb
 """
 
-import json
 import numpy as np
 import pandas as pd
-import plotly.express as px
-from streamlit_folium import st_folium
 import plotly.express as px
 import plotly.graph_objs as go
 import streamlit as st
@@ -116,7 +113,7 @@ def Insight2(obesidad, scatter=False):
     obesidad_filtrado = obesidad[obesidad['Salud'].isin(['Se cuida', 'No se cuida'])]
     
     if scatter==False:
-        fig = px.bar(obesidad_filtrado, x='obesity_type', color='Salud', title='Personas que se cuidan por tipo de obesidad',
+        fig = px.bar(obesidad_filtrado, x='obesity_type', color='Salud', title='Salud de las personas por tipo de obesidad',
                      labels={'obesity_type': 'Tipo de Obesidad',"count":"Personas"}, 
                      category_orders={'obesity_type': ['Insufficient_Weight','Normal_Weight', 'Overweight_Level_I', 'Overweight_Level_II', 'Obesity_Type_I', 'Obesity_Type_II', 'Obesity_Type_III']},
                      barmode="group",
